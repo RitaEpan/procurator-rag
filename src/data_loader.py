@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from pandas import DataFrame
 import pickle
+import logging
 
 
 def load_dataset(filepath: str) -> DataFrame:
@@ -49,4 +50,25 @@ def save_knowledge_base(data: dict, filepath: str) -> None:
             pickle.dump(data, f)
     except (OSError, pickle.PickleError) as e:
         raise IOError(f"Failed to save knowledge base: {filepath}") from e
-    print(f"Knowledge base saved: {filepath}")
+    logger = logging.getLogger(__name__)
+    logger.info(f"Saved knowledge base: {filepath}")
+
+
+def load_knowledge_base(filepath: str) -> dict | None:
+    """
+    Загружает базу знаний из pickle-файла
+
+    Args:
+        filepath (str): Путь
+
+    Returns:
+        dict | None: словарь(df, embeddings) или None если не найден
+    """
+    if not os.path.isfile(filepath):
+        return None
+    try:
+        with open(filepath, "rb") as f:
+            data = pickle.load(f)
+        return data
+    except (OSError, pickle.UnpicklingError) as e:
+        raise IOError(f"Failed to load knowledge base: {filepath}") from e
