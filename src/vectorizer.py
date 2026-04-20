@@ -1,17 +1,13 @@
-import os
 import numpy as np
 import logging
 from sentence_transformers import SentenceTransformer
-from config import EMBEDDING_MODEL
+from .config import EMBEDDING_MODEL
 
 logger = logging.getLogger(__name__)
 
 class Vectorizer:
     def __init__(self):
-        """
-        Инициализация векторизатора.
-        Загружает модель в память. При первом запуске скачивает её из интернета.
-        """
+
         logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
 
         self.model = SentenceTransformer(EMBEDDING_MODEL)
@@ -20,15 +16,15 @@ class Vectorizer:
 
     def encode_texts(self, texts: list[str], show_progress: bool = True) -> np.ndarray:
         """
-        Преобразует СПИСОК текстов в матрицу векторов.
-        Используется для создания базы знаний (один раз при старте).
+        Convert a list of texts into an embedding matrix.
+        Used when building the knowledge base.
 
         Args:
-            texts: Список строк (например, все жалобы из CSV).
-            show_progress: Показывать прогресс-бар (полезно для больших данных).
+            texts: List of input strings.
+            show_progress: Whether to show the model progress bar.
 
         Returns:
-            numpy.ndarray: Матрица размерности (N, D), где N - кол-во текстов, D - размер вектора.
+            numpy.ndarray: Matrix with shape (N, D), where N is text count and D is vector size.
         """
         if not texts:
             return np.array([])
@@ -38,14 +34,14 @@ class Vectorizer:
 
     def encode_single(self, text: str) -> np.ndarray:
         """
-        Преобразует ОДИН текст в вектор.
-        Используется для поиска похожей жалобы (при каждом запросе пользователя).
+        Convert a single text into one embedding vector.
+        Used to search for similar complaints.
 
         Args:
-            text: Одна строка (жалоба пользователя).
+            text: One input string.
 
         Returns:
-            numpy.ndarray: Вектор размерности (D,).
+            numpy.ndarray: Vector with shape (D,).
         """
         if not text:
             return np.array([])

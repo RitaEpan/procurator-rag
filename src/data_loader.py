@@ -1,22 +1,28 @@
+import logging
 import os
+import pickle
+import zipfile
+from io import BytesIO, StringIO
+
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
-import pickle
-import logging
+
+logger = logging.getLogger(__name__)
 
 
 def load_dataset(filepath: str) -> DataFrame:
     """
-    Загружает датасет из CSV-файла.
+    Load the dataset from a CSV file.
 
     Args:
-        filepath (str): Путь к файлу
+        filepath (str): File path.
 
     Returns:
-        pd.DataFrame: Таблица с данными
+        pd.DataFrame: Loaded data table.
 
     Raises:
-       FileNotFoundError: Если файл не найден
+        FileNotFoundError: If the file does not exist.
     """
 
     if not os.path.isfile(filepath):
@@ -32,11 +38,11 @@ def load_dataset(filepath: str) -> DataFrame:
 
 def save_knowledge_base(data: dict, filepath: str) -> None:
     """
-    Сохраняет базу знаний (данные + векторы) в pickle.
+    Save the knowledge base (data + vectors) as a portable zip archive.
 
     Args:
-        data (dict): Словарь с данными(df, embeddings)
-        filepath (str): Путь к файлу
+        data (dict): Dictionary with df and embeddings.
+        filepath (str): Output file path.
 
     Returns:
         None
@@ -46,29 +52,53 @@ def save_knowledge_base(data: dict, filepath: str) -> None:
         os.makedirs(folder, exist_ok=True)
 
     try:
-        with open(filepath, "wb") as f:
-            pickle.dump(data, f)
-    except (OSError, pickle.PickleError) as e:
+        dataframe_json = data["df"].to_json(orient="table", force_ascii=False)
+        embeddings_buffer = BytesIO()
+        np.save(embeddings_buffer, data["embeddings"], allow_pickle=False)
+        embeddings_buffer.seek(0)
+
+        with zipfile.ZipFile(filepath, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("dataframe.json", dataframe_json)
+            archive.writestr("embeddings.npy", embeddings_buffer.read())
+    except (OSError, ValueError, TypeError, KeyError) as e:
         raise IOError(f"Failed to save knowledge base: {filepath}") from e
-    logger = logging.getLogger(__name__)
-    logger.info(f"Saved knowledge base: {filepath}")
+
+    logger.info("Saved knowledge base: %s", filepath)
 
 
 def load_knowledge_base(filepath: str) -> dict | None:
     """
-    Загружает базу знаний из pickle-файла
+    Load the knowledge base from a portable archive or a legacy pickle file.
 
     Args:
-        filepath (str): Путь
+        filepath (str): File path.
 
     Returns:
-        dict | None: словарь(df, embeddings) или None если не найден
+        dict | None: Dictionary with df and embeddings, or None if unavailable.
     """
     if not os.path.isfile(filepath):
         return None
+
+    try:
+        with zipfile.ZipFile(filepath, "r") as archive:
+            dataframe_json = archive.read("dataframe.json").decode("utf-8")
+            embeddings_bytes = archive.read("embeddings.npy")
+
+        df = pd.read_json(StringIO(dataframe_json), orient="table")
+        embeddings = np.load(BytesIO(embeddings_bytes), allow_pickle=False)
+        return {"df": df, "embeddings": embeddings}
+    except (OSError, zipfile.BadZipFile, KeyError, ValueError) as e:
+        logger.warning("Falling back to legacy knowledge base format for %s: %s", filepath, e)
+
     try:
         with open(filepath, "rb") as f:
             data = pickle.load(f)
+
+        if not isinstance(data, dict) or "df" not in data or "embeddings" not in data:
+            logger.warning("Legacy knowledge base has unexpected structure: %s", filepath)
+            return None
+
         return data
-    except (OSError, pickle.UnpicklingError) as e:
-        raise IOError(f"Failed to load knowledge base: {filepath}") from e
+    except (OSError, pickle.UnpicklingError, AttributeError, ImportError, EOFError, NotImplementedError) as e:
+        logger.warning("Failed to load knowledge base %s: %s", filepath, e)
+        return None

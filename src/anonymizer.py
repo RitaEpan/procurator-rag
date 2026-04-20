@@ -1,5 +1,4 @@
 import re
-#????
 
 
 class SimpleAnonymizer:
@@ -27,13 +26,13 @@ class SimpleAnonymizer:
 
     def anonymize(self, text: str) -> tuple[str, dict]:
         """
-        Анонимизирует текст, заменяя имена и адреса на теги.
+        Anonymize text by replacing names and addresses with tags.
 
         Args:
-            text: Исходный текст жалобы
+            text: Original complaint text.
 
         Returns:
-            Кортеж из (аноним-ый текст, словарь замен)
+            Tuple with anonymized text and a replacement mapping.
         """
         if not isinstance(text, str):
             return text, {}
@@ -51,7 +50,6 @@ class SimpleAnonymizer:
                 anon_text = re.sub(pattern, tag, anon_text, flags=re.IGNORECASE)
 
         words = anon_text.split()
-        new_words = []
         i = 0
 
         while i < len(words):
@@ -79,14 +77,14 @@ class SimpleAnonymizer:
 
     def deanonymize(self, text: str, mapping: dict) -> str:
         """
-        Восстанавливает исходные значения из тегов.
+        Restore original values from anonymization tags.
 
         Args:
-            text: Текст с тегами
-            mapping: Словарь замен, полученный из anonymize
+            text: Text with tags.
+            mapping: Replacement mapping returned by anonymize.
 
         Returns:
-            Текст с восстановленными именами и адресами
+            Text with restored names and addresses.
         """
         result = text
         for tag, original_value in mapping.items():

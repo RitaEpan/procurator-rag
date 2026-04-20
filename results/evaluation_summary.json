@@ -1,0 +1,10 @@
+{
+  "dataset_size": 138,
+  "train_size": 110,
+  "test_size": 28,
+  "top_k": 3,
+  "random_state": 42,
+  "baseline_rouge_l_f1_mean": 0.10167050805161755,
+  "rag_rouge_l_f1_mean": 0.13583775750476876,
+  "rag_minus_baseline_mean": 0.03416724945315119
+}
